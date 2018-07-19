@@ -1054,6 +1054,8 @@ int uclogic_params_probe(struct uclogic_params **pparams,
 		break;
 	case VID_PID(USB_VENDOR_ID_UGEE,
 		     USB_DEVICE_ID_UGEE_XPPEN_TABLET_DECO01):
+	case VID_PID(USB_VENDOR_ID_UGEE,
+		     USB_DEVICE_ID_UGEE_XPPEN_TABLET_DECO01_V2):
 		/* If this is the pen and frame interface */
 		if (bInterfaceNumber == 1) {
 			rc = uclogic_params_pen_v1_probe(&pen, hdev);
