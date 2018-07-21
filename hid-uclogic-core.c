@@ -187,6 +187,8 @@ static int uclogic_probe(struct hid_device *hdev,
 	drvdata->re_state = U8_MAX;
 	hid_set_drvdata(hdev, drvdata);
 
+	hid_info(hdev, "probing\n");
+
 	/* Initialize the device and retrieve parameters */
 	rc = uclogic_params_probe(&drvdata->params, hdev);
 	if (rc != 0) {
