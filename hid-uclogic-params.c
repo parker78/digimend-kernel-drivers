@@ -877,6 +877,8 @@ int uclogic_params_init(struct uclogic_params *params,
 		     USB_DEVICE_ID_UCLOGIC_UGEE_TABLET_45):
 	case VID_PID(USB_VENDOR_ID_UCLOGIC,
 		     USB_DEVICE_ID_UCLOGIC_UGEE_TABLET_47):
+	case VID_PID(USB_VENDOR_ID_UCLOGIC,
+		     USB_DEVICE_ID_UCLOGIC_XPPEN_ARTIST_10S):
 		/* If it's not a pen interface */
 		if (bInterfaceNumber != 0) {
 			/* TODO: Consider marking the interface invalid */
