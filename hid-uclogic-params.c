@@ -1047,6 +1047,42 @@ int uclogic_params_init(struct uclogic_params *params,
 		}
 
 		break;
+	case VID_PID(USB_VENDOR_ID_UGEE,
+		     USB_DEVICE_ID_UGEE_XPPEN_ARTIST_13_3_V2):
+		/* Ignore non-pen interfaces */
+		if (bInterfaceNumber != 1) {
+			uclogic_params_init_invalid(&p);
+			break;
+		}
+
+		/* Try to probe pen parameters */
+		rc = uclogic_params_pen_init_v1(&p.pen, &found, hdev);
+		if (rc != 0) {
+			hid_err(hdev, "pen probing failed: %d\n", rc);
+			goto error;
+		} else if (found) {
+			hid_dbg(hdev, "pen parameters found\n");
+			/* Try to probe buttonpad */
+			rc = uclogic_params_frame_init_v1_buttonpad(
+							&p.frame,
+							&found, hdev);
+			if (rc != 0) {
+				hid_err(hdev, "buttonpad probing "
+					"failed: %d\n", rc);
+				goto error;
+			}
+			hid_dbg(hdev, "buttonpad parameters%s found\n",
+				(found ? "" : " not"));
+			if (found) {
+				/* Set bitmask marking frame reports */
+				p.pen_frame_flag = 0x20;
+			}
+		} else {
+			hid_err(hdev, "pen parameters not found");
+			uclogic_params_init_invalid(&p);
+		}
+
+		break;
 	}
 
 #undef VID_PID
