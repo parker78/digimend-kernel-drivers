@@ -241,6 +241,123 @@ static s32 uclogic_params_get_le24(const void *p)
 }
 
 /**
+ * uclogic_params_pen_init_v1_5() - initialize tablet interface pen
+ * input and retrieve its parameters from the device, using v1.5 protocol.
+ *
+ * @pen: 	Pointer to the pen parameters to initialize (to be
+ * 		cleaned up with uclogic_params_pen_cleanup()). Not modified in
+ * 		case of error, or if parameters are not found. Cannot be NULL.
+ * @pfound:	Location for a flag which is set to true if the parameters
+ * 		were found, and to false if not (e.g. device was
+ * 		incompatible). Not modified in case of error. Cannot be NULL.
+ * @hdev:	The HID device of the tablet interface to initialize and get
+ * 		parameters from. Cannot be NULL.
+ *
+ * Return:
+ * 	Zero, if successful. A negative errno code on error.
+ */
+static int uclogic_params_pen_init_v1_5(struct uclogic_params_pen *pen,
+					bool *pfound,
+					struct hid_device *hdev)
+{
+	int rc;
+	bool found = false;
+	/* Buffer for (part of) the string descriptor */
+	__u8 *buf = NULL;
+	/* Descriptor length required */
+	const int len = 18;
+	s32 resolution;
+	/* Pen report descriptor template parameters */
+	s32 desc_params[UCLOGIC_RDESC_PEN_PH_ID_NUM];
+	__u8 *desc_ptr = NULL;
+
+	/* Check arguments */
+	if (pen == NULL || pfound == NULL || hdev == NULL) {
+		rc = -EINVAL;
+		goto cleanup;
+	}
+
+	/*
+	 * Read string descriptor containing pen input parameters.
+	 * The specific string descriptor and data were discovered by sniffing
+	 * the Windows driver traffic.
+	 * NOTE: This enables fully-functional tablet mode.
+	 */
+	rc = uclogic_params_get_str_desc(&buf, hdev, 100, len);
+	if (rc == -EPIPE) {
+		hid_dbg(hdev,
+			"string descriptor with pen parameters not found, "
+			"assuming not compatible\n");
+		goto finish;
+	} else if (rc < 0) {
+		hid_err(hdev, "failed retrieving pen parameters: %d\n", rc);
+		goto cleanup;
+	} else if (rc != len) {
+		hid_dbg(hdev,
+			"string descriptor with pen parameters has "
+			"invalid length (got %d, expected %d), "
+			"assuming not compatible\n",
+			rc, len);
+		goto finish;
+	}
+
+	/*
+	 * Fill report descriptor parameters from the string descriptor
+	 */
+	desc_params[UCLOGIC_RDESC_PEN_PH_ID_X_LM] =
+		get_unaligned_le16(buf + 2);
+	desc_params[UCLOGIC_RDESC_PEN_PH_ID_Y_LM] =
+		get_unaligned_le16(buf + 4);
+	desc_params[UCLOGIC_RDESC_PEN_PH_ID_PRESSURE_LM] =
+		get_unaligned_le16(buf + 8);
+	resolution = get_unaligned_le16(buf + 10);
+	if (resolution == 0) {
+		desc_params[UCLOGIC_RDESC_PEN_PH_ID_X_PM] = 0;
+		desc_params[UCLOGIC_RDESC_PEN_PH_ID_Y_PM] = 0;
+	} else {
+		desc_params[UCLOGIC_RDESC_PEN_PH_ID_X_PM] =
+			desc_params[UCLOGIC_RDESC_PEN_PH_ID_X_LM] * 1000 /
+			resolution;
+		desc_params[UCLOGIC_RDESC_PEN_PH_ID_Y_PM] =
+			desc_params[UCLOGIC_RDESC_PEN_PH_ID_Y_LM] * 1000 /
+			resolution;
+	}
+	kfree(buf);
+	buf = NULL;
+
+	/*
+	 * Generate pen report descriptor
+	 */
+	desc_ptr = uclogic_rdesc_template_apply(
+				uclogic_rdesc_pen_v1_5_template_arr,
+				uclogic_rdesc_pen_v1_5_template_size,
+				desc_params, ARRAY_SIZE(desc_params));
+	if (desc_ptr == NULL) {
+		rc = -ENOMEM;
+		goto cleanup;
+	}
+
+	/*
+	 * Fill-in the parameters
+	 */
+	memset(pen, 0, sizeof(*pen));
+	pen->desc_ptr = desc_ptr;
+	desc_ptr = NULL;
+	pen->desc_size = uclogic_rdesc_pen_v1_5_template_size;
+	pen->id = UCLOGIC_RDESC_PEN_V1_5_ID;
+	pen->inrange = UCLOGIC_PARAMS_PEN_INRANGE_INVERTED;
+	pen->fragmented_hires = true;
+	found = true;
+finish:
+	*pfound = found;
+	rc = 0;
+cleanup:
+	kfree(desc_ptr);
+	kfree(buf);
+	return rc;
+}
+
+/**
  * uclogic_params_pen_init_v2() - initialize tablet interface pen
  * input and retrieve its parameters from the device, using v2 protocol.
  *
@@ -1117,6 +1234,30 @@ int uclogic_params_init(struct uclogic_params *params,
 			}
 		} else {
 			hid_warn(hdev, "pen parameters not found");
+			uclogic_params_init_invalid(&p);
+		}
+
+		break;
+
+	case VID_PID(USB_VENDOR_ID_UGEE,
+		     USB_DEVICE_ID_UGEE_TABLET_M708_V2):
+		/* Leave non-pen interfaces alone */
+		if (bInterfaceNumber != 1) {
+			uclogic_params_init_with_pen_unused(&p);
+			break;
+		}
+
+		/* Try to probe v1.5 pen parameters */
+		rc = uclogic_params_pen_init_v1_5(&p.pen, &found, hdev);
+		if (rc != 0) {
+			hid_err(hdev,
+				"failed probing pen v1.5 parameters: %d\n",
+				rc);
+			goto cleanup;
+		} else if (found) {
+			hid_dbg(hdev, "pen v1.5 parameters found\n");
+		} else {
+			hid_dbg(hdev, "pen v1.5 parameters not found\n");
 			uclogic_params_init_invalid(&p);
 		}
 

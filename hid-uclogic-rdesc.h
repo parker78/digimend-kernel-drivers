@@ -109,6 +109,13 @@ enum uclogic_rdesc_pen_ph_id {
 extern const __u8 uclogic_rdesc_pen_v1_template_arr[];
 extern const size_t uclogic_rdesc_pen_v1_template_size;
 
+/* Report ID for v1.5 pen reports */
+#define UCLOGIC_RDESC_PEN_V1_5_ID	0x07
+
+/* Fixed report descriptor template for (tweaked) v1.5 pen reports */
+extern const __u8 uclogic_rdesc_pen_v1_5_template_arr[];
+extern const size_t uclogic_rdesc_pen_v1_5_template_size;
+
 /* Report ID for v2 pen reports */
 #define UCLOGIC_RDESC_PEN_V2_ID	0x08
 
