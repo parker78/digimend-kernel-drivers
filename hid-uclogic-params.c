@@ -1121,6 +1121,45 @@ int uclogic_params_init(struct uclogic_params *params,
 		}
 
 		break;
+
+	case VID_PID(USB_VENDOR_ID_UGEE,
+		     USB_DEVICE_ID_UGEE_TABLET_M708_V2):
+		/* Ignore non-pen interfaces */
+		if (bInterfaceNumber != 1) {
+			uclogic_params_init_invalid(&p);
+			break;
+		}
+
+		/* Try to probe v1 pen parameters */
+		rc = uclogic_params_pen_init_v1(&p.pen, &found, hdev);
+		if (rc != 0) {
+			hid_err(hdev,
+				"failed probing pen v1 parameters: %d\n", rc);
+			goto cleanup;
+		} else if (found) {
+			hid_dbg(hdev, "pen v1 parameters found\n");
+			/* Try to probe v1 buttonpad */
+			rc = uclogic_params_frame_init_v1_buttonpad(
+							&p.frame,
+							&found, hdev);
+			if (rc != 0) {
+				hid_err(hdev, "v1 buttonpad probing "
+					"failed: %d\n", rc);
+				goto cleanup;
+			}
+			hid_dbg(hdev, "buttonpad v1 parameters%s found\n",
+				(found ? "" : " not"));
+			if (found) {
+				/* Set bitmask marking frame reports */
+				p.pen_frame_flag = 0x20;
+			}
+			break;
+		}
+		hid_dbg(hdev, "pen v1 parameters not found\n");
+
+		uclogic_params_init_invalid(&p);
+
+		break;
 	}
 
 #undef VID_PID
