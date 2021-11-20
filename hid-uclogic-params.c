@@ -1166,6 +1166,8 @@ int uclogic_params_init(struct uclogic_params *params,
 		     USB_DEVICE_ID_HUION_TABLET):
 	case VID_PID(USB_VENDOR_ID_HUION,
 		     USB_DEVICE_ID_HUION_TABLET2):
+        case VID_PID(USB_VENDOR_ID_HUION,
+                     USB_DEVICE_ID_UCLOGIC_TABLET_WP1062): // 适配高漫1060pro 256e:0064的设备
 	case VID_PID(USB_VENDOR_ID_UCLOGIC,
 		     USB_DEVICE_ID_HUION_TABLET):
 	case VID_PID(USB_VENDOR_ID_UCLOGIC,
